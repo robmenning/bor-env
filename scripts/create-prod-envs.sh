@@ -3,6 +3,7 @@
 # Script to create amalgamated production environment files
 # This script concatenates .env, .env.production, and .env.production.local files
 # into a single production.env file in each container's /prod-out subdirectory
+# Note: Reads from ../bor-secrets and creates files there (NOT in this git repo)
 
 set -e  # Exit on any error
 
@@ -19,7 +20,7 @@ CONTAINERS=(
 # Function to create amalgamated production env file
 create_production_env() {
     local container_name="$1"
-    local source_dir="./$container_name"
+    local source_dir="../bor-secrets/$container_name"
     local output_dir="$source_dir/prod-out"
     local output_file="$output_dir/${container_name}.production.env"
     
@@ -28,6 +29,7 @@ create_production_env() {
     # Check if source directory exists
     if [ ! -d "$source_dir" ]; then
         echo "  Warning: Source directory not found at $source_dir"
+        echo "  Run copy-from-repos.sh first to copy environment files to ../bor-secrets"
         return 1
     fi
     
@@ -99,8 +101,9 @@ create_production_env() {
 
 # Main execution
 echo "Starting production environment file amalgamation..."
-echo "Source: current directory subdirectories (./<container-name>)"
-echo "Output: /prod-out/production.env in each container directory"
+echo "Source: ../bor-secrets subdirectories (../bor-secrets/<container-name>)"
+echo "Output: /prod-out/production.env in each ../bor-secrets container directory"
+echo "Note: All files are created in ../bor-secrets (NOT in this git repo)"
 echo ""
 
 # Process each container
@@ -111,9 +114,9 @@ done
 
 echo "Production environment file amalgamation completed!"
 echo ""
-echo "Files created:"
+echo "Files created in ../bor-secrets:"
 for container in "${CONTAINERS[@]}"; do
-    local output_file="./$container/prod-out/${container}.production.env"
+    local output_file="../bor-secrets/$container/prod-out/${container}.production.env"
     if [ -f "$output_file" ]; then
         local line_count=$(wc -l < "$output_file")
         echo "  $output_file ($line_count lines)"
@@ -121,6 +124,6 @@ for container in "${CONTAINERS[@]}"; do
 done
 echo ""
 echo "Next steps:"
-echo "1. Review the amalgamated production.env files"
-echo "2. Use these files in your Docker run commands with --env-file"
-echo "3. Commit the /prod-out directories to this repository"
+echo "1. Review the amalgamated production.env files in ../bor-secrets"
+echo "2. Use scp-prod-envs.sh to deploy these files to production server"
+echo "3. Keep ../bor-secrets separate from git repositories"

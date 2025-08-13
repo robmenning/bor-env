@@ -1,18 +1,18 @@
 #!/bin/bash
 
 # Script to scp production environment files to the production server
-# This script copies the amalgamated production.env files from prod-out directories
+# This script copies the amalgamated production.env files from ../bor-secrets prod-out directories
 # to the server secrets directory for deployment
 
 # server path to scp to:
-# robmenning.com@xenodochial-turing.108-175-7-118.plesk.page:/var/www/vhosts/robmenning.com/bor/secrets
+# robmenning.com@xenodochial-turing.108-175-7-118.plesk.page:/var/www/vhosts/robmenning.com/bor/bor-secret
 
 set -e  # Exit on any error
 
 # Server configuration
 SERVER_HOST="xenodochial-turing.108-175-7-118.plesk.page"  # Server hostname from header comments
 SERVER_USER="robmenning.com"      # Username from header comments
-SERVER_PATH="/var/www/vhosts/robmenning.com/bor/secrets"  # Server path from header comments
+SERVER_PATH="/var/www/vhosts/robmenning.com/bor/bor-secret"  # Updated server path
 
 # Hard-coded container names for simplicity (same as create-prod-envs.sh)
 CONTAINERS=(
@@ -27,7 +27,7 @@ CONTAINERS=(
 # Function to scp production env file to server
 scp_production_env() {
     local container_name="$1"
-    local local_file="./$container_name/prod-out/${container_name}.production.env"
+    local local_file="../bor-secrets/$container_name/prod-out/${container_name}.production.env"
     local remote_file="${SERVER_USER}@${SERVER_HOST}:${SERVER_PATH}/${container_name}.production.env"
     
     echo "Processing $container_name..."
@@ -35,7 +35,7 @@ scp_production_env() {
     # Check if local file exists
     if [ ! -f "$local_file" ]; then
         echo "  Warning: Local file not found at $local_file"
-        echo "  Run create-prod-envs.sh first to generate the production environment files"
+        echo "  Run create-prod-envs.sh first to generate the production environment files in ../bor-secrets"
         return 1
     fi
     
@@ -71,6 +71,7 @@ scp_production_env() {
 echo "Starting production environment file deployment to server..."
 echo "Server: ${SERVER_USER}@${SERVER_HOST}"
 echo "Target path: ${SERVER_PATH}"
+echo "Source: ../bor-secrets prod-out directories"
 echo "Note: You will be prompted for password for each file transfer"
 echo ""
 
@@ -92,7 +93,7 @@ echo "Production environment file deployment completed!"
 echo ""
 echo "Files deployed to server:"
 for container in "${CONTAINERS[@]}"; do
-    local local_file="./$container/prod-out/${container}.production.env"
+    local local_file="../bor-secrets/$container/prod-out/${container}.production.env"
     if [ -f "$local_file" ]; then
         echo "  ${SERVER_PATH}/${container}.production.env"
     fi

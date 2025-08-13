@@ -1,8 +1,9 @@
 #!/bin/bash
 
-# Script to copy environment files from bor- repositories into this repo's subdirectories
+# Script to copy environment files from bor- repositories into ../bor-secrets subdirectories
 # This script copies .env* files from the parent directory repositories into the corresponding
-# subdirectories for centralized environment file management
+# subdirectories in ../bor-secrets for centralized environment file management
+# Note: ../bor-secrets is NOT a git repository and contains sensitive files
 
 set -e  # Exit on any error
 
@@ -20,7 +21,7 @@ CONTAINERS=(
 copy_env_files() {
     local container_name="$1"
     local source_dir="../$container_name"
-    local target_dir="./$container_name"
+    local target_dir="../bor-secrets/$container_name"
     
     echo "Processing $container_name..."
     
@@ -64,7 +65,8 @@ copy_env_files() {
 # Main execution
 echo "Starting environment file copy process..."
 echo "Source: parent directory repositories (../<container-name>)"
-echo "Target: current directory subdirectories (./<container-name>)"
+echo "Target: ../bor-secrets subdirectories (../bor-secrets/<container-name>)"
+echo "Note: ../bor-secrets is NOT a git repository and contains sensitive files"
 echo ""
 
 # Process each container
@@ -76,6 +78,7 @@ done
 echo "Environment file copy process completed!"
 echo ""
 echo "Next steps:"
-echo "1. Review the copied files in each subdirectory"
-echo "2. Commit the environment files to this repository"
-echo "3. Update your deployment scripts to use these centralized env files"
+echo "1. Review the copied files in ../bor-secrets subdirectories"
+echo "2. Run create-prod-envs.sh to generate production environment files"
+echo "3. Use scp-prod-envs.sh to deploy to production server"
+echo "4. Keep ../bor-secrets separate from git repositories"
