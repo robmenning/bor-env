@@ -1,102 +1,195 @@
-this project will contain project .env files for all bor- related projects/containers and scripts to deploy them to differenc environmenst, 
-initially the choice will be 'prod_ionos'. 
+# BOR Environment Management System
 
-# pwd to the path 
-export PROD_IONOS_ROOT_PATH="/var/www/vhosts/robmenning.com/bor"
+This project contains scripts to manage environment files for all BOR-related projects/containers and deploy them to production environments.
 
-export PROD_IONOS_BOR_DB_CONTAINER_NAME="bor-db"
-export PROD_IONOS_BOR_API_CONTAINER_NAME="bor-api"
-export PROD_IONOS_BOR_APP_CONTAINER_NAME="bor-app"
-export PROD_IONOS_BOR_AIRFLOW_CONTAINER_NAME="bor-airflow"
-export PROD_IONOS_BOR_FILES_CONTAINER_NAME="bor-files"
-export PROD_IONOS_BOR_MESSAGE_CONTAINER_NAME="bor-message"
+## Container Architecture
 
+The system manages these BOR containers:
+- `bor-db` - Database container
+- `bor-api` - API container  
+- `bor-app` - Application container
+- `bor-airflow` - Airflow container
+- `bor-files` - Files container
+- `bor-message` - Message container
 
+## Directory Structure
 
+```
+bor-env/                          # This git repository (scripts only)
+├── scripts/
+│   ├── copy-from-repos.sh       # Copy .env files from bor-* repos
+│   ├── create-prod-envs.sh      # Create amalgamated production files
+│   └── scp-prod-envs.sh         # Deploy to production server
+└── .cursorrules
 
-Recommended by you: 
-env file consolidation
+../bor-secrets/                   # Centralized env files (NOT in git)
+├── bor-db/
+│   ├── .env                     # Base environment
+│   ├── .env.production          # Production overrides
+│   ├── .env.production.local    # Local production overrides
+│   └── prod-out/
+│       └── bor-db.production.env # Final amalgamated file
+├── bor-api/
+│   ├── .env
+│   ├── .env.production
+│   ├── .env.production.local
+│   └── prod-out/
+│       └── bor-api.production.env
+├── bor-app/
+│   ├── .env
+│   ├── .env.production
+│   ├── .env.production.local
+│   └── prod-out/
+│       └── bor-app.production.env
+├── bor-airflow/
+│   ├── .env
+│   ├── .env.production
+│   └── prod-out/
+│       └── bor-airflow.production.env
+├── bor-files/
+│   ├── .env
+│   ├── .env.production
+│   └── prod-out/
+│       └── bor-files.production.env
+└── bor-message/
+    ├── .env
+    ├── .env.production
+    └── prod-out/
+        └── bor-message.production.env
 
-Recommended approach (no git hassles)
-Create a secrets/config directory outside any git repo:
-mkdir -p /var/www/vhosts/robmenning.com/bor/secrets
-chmod 700 /var/www/vhosts/robmenning.com/bor/secrets
-Store envs there, e.g.:
-/var/www/vhosts/robmenning.com/bor/secrets/bor-app.prod.env
-/var/www/vhosts/robmenning.com/bor/secrets/bor-app.prod.local.env
-/var/www/vhosts/robmenning.com/bor/secrets/bor-af.prod.env
-Update run scripts to use --env-file (no -e sprawl, no .env in repo):
-For bor-app:
-docker run ... --env-file /var/www/vhosts/robmenning.com/bor/secrets/bor-app.prod.env --env-file /var/www/vhosts/robmenning.com/bor/secrets/bor-app.prod.local.env ...
-For bor-af:
-docker run ... --env-file /var/www/vhosts/robmenning.com/bor/secrets/bor-af.prod.env ...
-Deployment flow:
-cd /var/www/vhosts/robmenning.com/bor/bor-app
-git fetch origin && git reset --hard origin/notification && git clean -fd
-scp updated envs to /var/www/vhosts/robmenning.com/bor/secrets (only when envs change)
-restart containers with scripts
-If you must keep env files inside the repo tree
-Always copy after git pull:
-git fetch && git reset --hard origin/notification && git clean -fd
-scp .env* into the repo dir
-restart
-If you get blocked by local changes (from prior manual edits), force-clean:
-git fetch origin
-git reset --hard origin/notification
-git clean -fd
-As a temporary safety net (not recommended long-term on prod):
-git stash push --include-untracked --message "pre-deploy-$(date +%F-%H%M)"
-git pull --rebase
-Optionally: git stash drop (avoid keeping stashes on prod)
-Optional quality-of-life
-Use a small loader in docker-run-prod.sh if you prefer exporting envs:
-set -a; . /var/www/vhosts/robmenning.com/bor/secrets/bor-app.prod.env; [ -f /var/www/vhosts/robmenning.com/bor/secrets/bor-app.prod.local.env ] && . /var/www/vhosts/robmenning.com/bor/secrets/bor-app.prod.local.env; set +a
-then docker run ... -e VAR="$VAR" ... (I still recommend --env-file)
-Why this works best
-Secrets never touch the git working tree, so git pull is always clean and idempotent.
-You centralize secrets per service, can rotate independently, and remove the need for stash hacks.
-Summary
-Best practice: keep envs in /var/www/vhosts/robmenning.com/bor/secrets and reference them with --env-file; pull code first, then scp only if secrets changed; avoid git stash on prod.
+../bor-*/                         # Individual bor-* repositories
+├── bor-db/
+├── bor-api/
+├── bor-app/
+├── bor-airflow/
+├── bor-files/
+└── bor-message/
+```
 
-... I suggest separate dir by container ...
+## Script Workflow
 
-Yes—do that. It’s the cleanest layout.
-Suggested structure
-/var/www/vhosts/robmenning.com/bor/secrets/
-common/
-prod.env (shared values like BOR_NETWORK)
-bor-db/
-prod.env
-bor-api/
-prod.env
-prod.local.env
-bor-app/
-prod.env
-prod.local.env
-bor-af/
-prod.env
-Permissions
-chown root:root /var/www/vhosts/robmenning.com/bor/secrets -R
-chmod 700 /var/www/vhosts/robmenning.com/bor/secrets
-chmod 600 on each .env (or 640 and run docker as root or a group that can read)
-Update run scripts (example)
-bor-app:
-docker run ... \
---env-file /var/www/vhosts/robmenning.com/bor/secrets/common/prod.env \
---env-file /var/www/vhosts/robmenning.com/bor/secrets/bor-app/prod.env \
---env-file /var/www/vhosts/robmenning.com/bor/secrets/bor-app/prod.local.env \
-...
-bor-af:
-docker run ... \
---env-file /var/www/vhosts/robmenning.com/bor/secrets/bor-af/prod.env \
-...
-Ops flow
-git pull (code only)
-scp/rsync envs to their per‑service secret folders only when they change
-restart the containers
-Tips
-Keep “common” file minimal; override in service files later in the list.
-Ensure newline at EOF; no quotes unless needed; no trailing spaces.
-Optional: add a small check in scripts: [ -f path ] || echo "Missing env file" && exit 1.
-This keeps secrets out of the repo, avoids git stash, and makes deployments idempotent.
+### 1. copy-from-repos.sh
+**Purpose**: Copies `.env*` files from individual bor-* repositories into the centralized `../bor-secrets` directory.
+
+**Usage**:
+```bash
+# Copy env files from all repositories
+./scripts/copy-from-repos.sh
+
+# This will:
+# - Copy .env, .env.production, .env.production.local from each ../bor-* repo
+# - Create ../bor-secrets/<container>/ subdirectories
+# - Set proper permissions (600) on copied files
+```
+
+**What it does**:
+- Scans parent directory for bor-* repositories
+- Copies all `.env*` files to corresponding `../bor-secrets/<container>/` subdirectories
+- Creates target directories if they don't exist
+- Sets secure permissions (600) on copied files
+
+### 2. create-prod-envs.sh
+**Purpose**: Creates amalgamated production environment files by concatenating multiple .env files in the correct order.
+
+**Usage**:
+```bash
+# Create production env files for all containers
+./scripts/create-prod-envs.sh
+
+# This will:
+# - Read from ../bor-secrets/<container>/ directories
+# - Create ../bor-secrets/<container>/prod-out/ directories
+# - Generate <container>.production.env files
+```
+
+**File Concatenation Order** (later files override earlier ones):
+1. `.env` (base environment)
+2. `.env.production` (production overrides)
+3. `.env.production.local` (final local overrides)
+
+**Output**: Each container gets a `prod-out/<container>.production.env` file with all variables merged.
+
+### 3. scp-prod-envs.sh
+**Purpose**: Deploys production environment files to the production server.
+
+**Usage**:
+```bash
+# Deploy single container
+./scripts/scp-prod-envs.sh bor-app
+
+# Deploy all containers (with confirmation)
+./scripts/scp-prod-envs.sh
+
+# Deploy specific container
+./scripts/scp-prod-envs.sh bor-db
+```
+
+**What it does**:
+- Copies `<container>.production.env` files to production server
+- Creates remote directories if needed
+- Sets proper permissions on server
+- Verifies file transfer integrity
+- Provides confirmation prompt when deploying all containers
+
+## Complete Workflow Example
+
+```bash
+# 1. Copy environment files from repositories
+./scripts/copy-from-repos.sh
+
+# 2. Create amalgamated production files
+./scripts/create-prod-envs.sh
+
+# 3. Deploy to production (single container)
+./scripts/scp-prod-envs.sh bor-app
+
+# 4. Deploy to production (all containers)
+./scripts/scp-prod-envs.sh
+```
+
+## Production Server Configuration
+
+**Server Details**:
+- Host: `xenodochial-turing.108-175-7-118.plesk.page`
+- User: `robmenning.com`
+- Target Path: `/var/www/vhosts/robmenning.com/bor/bor-secret`
+
+**File Permissions**:
+- Local: `600` (owner read/write only)
+- Server: `600` (owner read/write only)
+
+## Security Features
+
+- `../bor-secrets` is NOT a git repository
+- All .env files have restrictive permissions (600)
+- Scripts validate container names before processing
+- Confirmation required for deploying all containers
+- File integrity verification after transfer
+
+## Docker Integration
+
+The final production environment files can be used with Docker's `--env-file` flag:
+
+```bash
+# Example Docker run command
+docker run \
+  --env-file /var/www/vhosts/robmenning.com/bor/bor-secret/bor-app.production.env \
+  your-image-name
+```
+
+## Best Practices
+
+1. **Always run scripts in order**: copy → create → deploy
+2. **Test single containers first** before deploying all
+3. **Keep ../bor-secrets separate** from any git repositories
+4. **Review amalgamated files** before deployment
+5. **Use single container deployment** for testing and debugging
+6. **Verify file permissions** on both local and server
+
+## Troubleshooting
+
+- **Missing env files**: Run `copy-from-repos.sh` first
+- **Permission denied**: Check file permissions in `../bor-secrets`
+- **SSH connection issues**: Verify server credentials and connectivity
+- **File size mismatch**: Re-run the deployment script
 
