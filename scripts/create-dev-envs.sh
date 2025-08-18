@@ -21,7 +21,7 @@ CONTAINERS=(
 create_development_env() {
     local container_name="$1"
     local source_dir="../bor-secrets/$container_name"
-    local output_dir="../bor-secrets/$container_name"
+    local output_dir="../bor-secrets/$container_name/dev"
     local output_file="$output_dir/${container_name}.development.env"
     
     echo "Processing $container_name..."
@@ -103,7 +103,7 @@ create_development_env() {
 # Main execution
 echo "Starting development environment file amalgamation..."
 echo "Source: ../bor-secrets subdirectories (../bor-secrets/<container-name>)"
-echo "Output: <container-name>.development.env in each ../bor-secrets/<container-name>/ directory"
+echo "Output: <container-name>.development.env in each ../bor-secrets/<container-name>/dev/ directory"
 echo "Note: All files are created in the ../bor-secrets directory structure"
 echo ""
 
@@ -117,9 +117,9 @@ echo "Development environment file amalgamation completed!"
 echo ""
 echo "Files created in ../bor-secrets directories:"
 for container in "${CONTAINERS[@]}"; do
-    local output_file="../bor-secrets/$container/${container}.development.env"
+    output_file="../bor-secrets/$container/dev/${container}.development.env"
     if [ -f "$output_file" ]; then
-        local line_count=$(wc -l < "$output_file")
+        line_count=$(wc -l < "$output_file")
         echo "  $output_file ($line_count lines)"
     fi
 done

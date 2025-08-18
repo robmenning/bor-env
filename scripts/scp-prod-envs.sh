@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script to scp production environment files to the production server
-# This script copies the amalgamated production.env files from ../bor-secrets prod-out directories
+# This script copies the amalgamated production.env files from ../bor-secrets prod directories
 # to the server secrets directory for deployment
 
 # server path to scp to:
@@ -51,15 +51,15 @@ get_confirmation() {
 # Function to scp production env file to server
 scp_production_env() {
     local container_name="$1"
-    local local_file="../bor-secrets/$container_name/prod-out/${container_name}.production.env"
-    local remote_file="${SERVER_USER}@${SERVER_HOST}:${SERVER_PATH}/${container_name}.production.env"
+    local local_file="../bor-secrets/$container_name/prod/${container_name}.production.env"
+    local remote_file="${SERVER_USER}@${SERVER_HOST}:${SERVER_PATH}/${container_name}/prod/${container_name}.production.env"
     
     echo "Processing $container_name..."
     
     # Check if local file exists
     if [ ! -f "$local_file" ]; then
         echo "  Warning: Local file not found at $local_file"
-        echo "  Run create-prod-envs.sh first to generate the production environment files in ../bor-secrets"
+        echo "  Run create-prod-envs.sh first to generate the production environment files in ../bor-secrets/prod directories"
         return 1
     fi
     
@@ -102,16 +102,12 @@ fi
 echo "Starting production environment file deployment to server..."
 echo "Server: ${SERVER_USER}@${SERVER_HOST}"
 echo "Target path: ${SERVER_PATH}"
-echo "Source: ../bor-secrets prod-out directories"
+echo "Source: ../bor-secrets prod directories"
 echo "Note: You will be prompted for password for each file transfer"
 echo ""
 
-# Check if we have SSH access
-echo "Testing SSH connection..."
-if ! ssh -o ConnectTimeout=10 -o BatchMode=yes "${SERVER_USER}@${SERVER_HOST}" "echo 'SSH connection successful'" >/dev/null 2>&1; then
-    echo "Note: SSH key authentication not available, will use password authentication"
-    echo "You will be prompted for password for each operation"
-fi
+# Note: Using scp for file transfer (no SSH connection test)
+echo "Note: You will be prompted for password for each file transfer"
 echo ""
 
 # Process containers (either single or all)
@@ -124,9 +120,9 @@ echo "Production environment file deployment completed!"
 echo ""
 echo "Files deployed to server:"
 for container in "${CONTAINERS[@]}"; do
-    local_file="../bor-secrets/$container/prod-out/${container}.production.env"
+    local_file="../bor-secrets/$container/prod/${container}.production.env"
     if [ -f "$local_file" ]; then
-        echo "  ${SERVER_PATH}/${container}.production.env"
+        echo "  ${SERVER_PATH}/${container}/prod/${container}.production.env"
     fi
 done
 echo ""

@@ -21,7 +21,7 @@ CONTAINERS=(
 create_production_env() {
     local container_name="$1"
     local source_dir="../bor-secrets/$container_name"
-    local output_dir="$source_dir/prod-out"
+    local output_dir="../bor-secrets/$container_name/prod"
     local output_file="$output_dir/${container_name}.production.env"
     
     echo "Processing $container_name..."
@@ -102,7 +102,7 @@ create_production_env() {
 # Main execution
 echo "Starting production environment file amalgamation..."
 echo "Source: ../bor-secrets subdirectories (../bor-secrets/<container-name>)"
-echo "Output: /prod-out/production.env in each ../bor-secrets container directory"
+echo "Output: /prod/production.env in each ../bor-secrets container directory"
 echo "Note: All files are created in ../bor-secrets (NOT in this git repo)"
 echo ""
 
@@ -116,9 +116,9 @@ echo "Production environment file amalgamation completed!"
 echo ""
 echo "Files created in ../bor-secrets:"
 for container in "${CONTAINERS[@]}"; do
-    local output_file="../bor-secrets/$container/prod-out/${container}.production.env"
+    output_file="../bor-secrets/$container/prod/${container}.production.env"
     if [ -f "$output_file" ]; then
-        local line_count=$(wc -l < "$output_file")
+        line_count=$(wc -l < "$output_file")
         echo "  $output_file ($line_count lines)"
     fi
 done
@@ -127,3 +127,4 @@ echo "Next steps:"
 echo "1. Review the amalgamated production.env files in ../bor-secrets"
 echo "2. Use scp-prod-envs.sh to deploy these files to production server"
 echo "3. Keep ../bor-secrets separate from git repositories"
+echo "4. Run copy-from-repos.sh to update source files when needed"
