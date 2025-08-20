@@ -2,8 +2,8 @@
 
 # Script to create amalgamated production environment files
 # This script concatenates .env, .env.production, and .env.production.local files
-# into a single production.env file in each container's /prod-out subdirectory
-# Note: Reads from ../bor-secrets and creates files there (NOT in this git repo)
+# into a single production.env file in each container's /production subdirectory
+# Note: Reads from ../bor-secrets/base and creates files in ../bor-secrets/pfcm (NOT in this git repo)
 
 set -e  # Exit on any error
 
@@ -20,8 +20,8 @@ CONTAINERS=(
 # Function to create amalgamated production env file
 create_production_env() {
     local container_name="$1"
-    local source_dir="../bor-secrets/$container_name"
-    local output_dir="../bor-secrets/$container_name/prod"
+    local source_dir="../bor-secrets/base/$container_name"
+    local output_dir="../bor-secrets/pfcm/$container_name/production"
     local output_file="$output_dir/${container_name}.production.env"
     
     echo "Processing $container_name..."
@@ -29,11 +29,12 @@ create_production_env() {
     # Check if source directory exists
     if [ ! -d "$source_dir" ]; then
         echo "  Warning: Source directory not found at $source_dir"
-        echo "  Run copy-from-repos.sh first to copy environment files to ../bor-secrets"
+        echo "  Run copy-from-repos.sh first to copy environment files to ../bor-secrets/pfcm"
+        echo "  Then copy pfcm to base: cp -r ../bor-secrets/pfcm/* ../bor-secrets/base/"
         return 1
     fi
     
-    # Create prod-out directory if it doesn't exist
+    # Create production directory if it doesn't exist
     if [ ! -d "$output_dir" ]; then
         echo "  Creating output directory: $output_dir"
         mkdir -p "$output_dir"
@@ -93,7 +94,7 @@ create_production_env() {
     chmod 600 "$output_file"
     
     # Count lines in output file
-    local line_count=$(wc -l < "$output_file")
+    line_count=$(wc -l < "$output_file")
     
     echo "      ✓ Created $output_file with $line_count lines"
     echo "  ✓ Completed $container_name"
@@ -101,9 +102,9 @@ create_production_env() {
 
 # Main execution
 echo "Starting production environment file amalgamation..."
-echo "Source: ../bor-secrets subdirectories (../bor-secrets/<container-name>)"
-echo "Output: /prod/production.env in each ../bor-secrets container directory"
-echo "Note: All files are created in ../bor-secrets (NOT in this git repo)"
+echo "Source: ../bor-secrets/base subdirectories (../bor-secrets/base/<container-name>)"
+echo "Output: /production/production.env in each ../bor-secrets/pfcm container directory"
+echo "Note: All files are created in ../bor-secrets/pfcm (NOT in this git repo)"
 echo ""
 
 # Process each container
@@ -114,9 +115,9 @@ done
 
 echo "Production environment file amalgamation completed!"
 echo ""
-echo "Files created in ../bor-secrets:"
+echo "Files created in ../bor-secrets/pfcm:"
 for container in "${CONTAINERS[@]}"; do
-    output_file="../bor-secrets/$container/prod/${container}.production.env"
+    output_file="../bor-secrets/pfcm/$container/production/${container}.production.env"
     if [ -f "$output_file" ]; then
         line_count=$(wc -l < "$output_file")
         echo "  $output_file ($line_count lines)"
@@ -124,7 +125,7 @@ for container in "${CONTAINERS[@]}"; do
 done
 echo ""
 echo "Next steps:"
-echo "1. Review the amalgamated production.env files in ../bor-secrets"
+echo "1. Review the amalgamated production.env files in ../bor-secrets/pfcm"
 echo "2. Use scp-prod-envs.sh to deploy these files to production server"
 echo "3. Keep ../bor-secrets separate from git repositories"
 echo "4. Run copy-from-repos.sh to update source files when needed"

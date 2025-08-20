@@ -2,8 +2,8 @@
 
 # Script to create amalgamated development environment files
 # This script concatenates .env, .env.development, and .env.development.local files
-# into a single development.env file in each container's parent directory
-# Note: Reads from ../bor-secrets and creates files in ../<containername>/ directories
+# into a single development.env file in each container's /development subdirectory
+# Note: Reads from ../bor-secrets/base and creates files in ../bor-secrets/pfcm (NOT in this git repo)
 
 set -e  # Exit on any error
 
@@ -20,8 +20,8 @@ CONTAINERS=(
 # Function to create amalgamated development env file
 create_development_env() {
     local container_name="$1"
-    local source_dir="../bor-secrets/$container_name"
-    local output_dir="../bor-secrets/$container_name/dev"
+    local source_dir="../bor-secrets/base/$container_name"
+    local output_dir="../bor-secrets/pfcm/$container_name/development"
     local output_file="$output_dir/${container_name}.development.env"
     
     echo "Processing $container_name..."
@@ -29,15 +29,15 @@ create_development_env() {
     # Check if source directory exists
     if [ ! -d "$source_dir" ]; then
         echo "  Warning: Source directory not found at $source_dir"
-        echo "  Run copy-from-repos.sh first to copy environment files to ../bor-secrets"
+        echo "  Run copy-from-repos.sh first to copy environment files to ../bor-secrets/pfcm"
+        echo "  Then copy pfcm to base: cp -r ../bor-secrets/pfcm/* ../bor-secrets/base/"
         return 1
     fi
     
-    # Check if output directory exists
+    # Create development directory if it doesn't exist
     if [ ! -d "$output_dir" ]; then
-        echo "  Warning: Output directory not found at $output_dir"
-        echo "  Run copy-from-repos.sh first to create the directory structure"
-        return 1
+        echo "  Creating output directory: $output_dir"
+        mkdir -p "$output_dir"
     fi
     
     # Check which source files exist
@@ -94,7 +94,7 @@ create_development_env() {
     chmod 600 "$output_file"
     
     # Count lines in output file
-    local line_count=$(wc -l < "$output_file")
+    line_count=$(wc -l < "$output_file")
     
     echo "      ✓ Created $output_file with $line_count lines"
     echo "  ✓ Completed $container_name"
@@ -102,9 +102,9 @@ create_development_env() {
 
 # Main execution
 echo "Starting development environment file amalgamation..."
-echo "Source: ../bor-secrets subdirectories (../bor-secrets/<container-name>)"
-echo "Output: <container-name>.development.env in each ../bor-secrets/<container-name>/dev/ directory"
-echo "Note: All files are created in the ../bor-secrets directory structure"
+echo "Source: ../bor-secrets/base subdirectories (../bor-secrets/base/<container-name>)"
+echo "Output: /development/development.env in each ../bor-secrets/pfcm container directory"
+echo "Note: All files are created in ../bor-secrets/pfcm (NOT in this git repo)"
 echo ""
 
 # Process each container
@@ -115,9 +115,9 @@ done
 
 echo "Development environment file amalgamation completed!"
 echo ""
-echo "Files created in ../bor-secrets directories:"
+echo "Files created in ../bor-secrets/pfcm:"
 for container in "${CONTAINERS[@]}"; do
-    output_file="../bor-secrets/$container/dev/${container}.development.env"
+    output_file="../bor-secrets/pfcm/$container/development/${container}.development.env"
     if [ -f "$output_file" ]; then
         line_count=$(wc -l < "$output_file")
         echo "  $output_file ($line_count lines)"
@@ -125,7 +125,7 @@ for container in "${CONTAINERS[@]}"; do
 done
 echo ""
 echo "Next steps:"
-echo "1. Review the amalgamated development.env files in ../bor-secrets directories"
+echo "1. Review the amalgamated development.env files in ../bor-secrets/pfcm"
 echo "2. Use these files for local development and testing"
 echo "3. Keep ../bor-secrets separate from git repositories"
 echo "4. Run copy-from-repos.sh to update source files when needed" 
