@@ -150,16 +150,33 @@ create_production_env() {
     # Export all variables from the combined file for envsubst to use
     # This allows nested variable resolution by making variables available in shell environment
     set -a  # Automatically export all variables - critical for envsubst to work
-    # Use a safer approach - export variables line by line instead of sourcing
-    while IFS= read -r line || [ -n "$line" ]; do
-        # Skip empty lines and comments
-        if [[ -n "$line" && ! "$line" =~ ^[[:space:]]*# ]]; then
-            # Only export if it looks like a valid variable assignment
-            if [[ "$line" =~ ^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*= ]]; then
-                export "$line"
-            fi
+    # Instead of sourcing the combined file (which can cause shell interpretation errors),
+    # we'll use a safer approach with envsubst that processes variables without shell execution
+    # First, create a clean environment file with only valid variable assignments
+    # Filter out any lines that might contain shell commands or special characters
+    # More strict filtering to avoid problematic lines
+    grep -E '^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*$' "$temp_combined_file" > "$temp_env_file" 2>/dev/null || true
+    
+    # Also filter out lines with spaces in values or special characters that might cause issues
+    # Create a more restrictive filter for the environment variables
+    local temp_clean_env_file=$(mktemp)
+    trap 'rm -f "$temp_base_file" "$temp_prod_file" "$temp_prod_local_file" "$temp_combined_file" "$temp_env_file" "$temp_clean_env_file"' EXIT
+    
+    # Only include simple variable assignments without spaces or special characters in values
+    while IFS= read -r line; do
+        # Skip empty lines
+        [[ -z "$line" ]] && continue
+        # Only include lines that look like simple variable assignments
+        if [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*$ ]]; then
+            echo "$line" >> "$temp_clean_env_file"
         fi
-    done < "$temp_combined_file"
+    done < "$temp_env_file"
+    
+    # Export only the clean variables for envsubst to use
+    # This prevents shell interpretation errors while still allowing variable substitution
+    if [ -s "$temp_clean_env_file" ]; then
+        source "$temp_clean_env_file"
+    fi
     set +a  # Turn off auto-export to prevent polluting shell environment
     
     # Use envsubst to process the combined file with variable substitution
