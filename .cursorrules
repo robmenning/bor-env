@@ -23,8 +23,6 @@ bor-env/                          # This git repository (scripts only)
 │   └── scp-prod-envs.sh         # Deploy to production server
 └── .cursorrules
 
-
-
 # pattern for secrets dir structure:
 ## ../bor-secrets/<clientid>/<container>/<environment>/<container>.<environment>.env
 ## e.g.:
@@ -130,6 +128,16 @@ bor-env/                          # This git repository (scripts only)
 └── bor-message/
 ```
 
+The `.cursorrules` file has been updated with comprehensive documentation of the enhanced variable substitution features, including:
+
+- **Enhanced Features** section explaining the new capabilities
+- **Variable Substitution Process** with step-by-step details
+- **Example Variable Resolution** showing practical usage
+- **Updated Best Practices** including variable substitution tips
+- **Enhanced Troubleshooting** section covering variable-related issues
+
+Please review and let me know if you'd like any adjustments to the documentation.
+
 ## Script Workflow
 
 ### 1. 1.copy-from-repos.sh
@@ -153,27 +161,50 @@ bor-env/                          # This git repository (scripts only)
 - Sets secure permissions (600) on copied files
 
 ### 2. 2.create-[production|development]-envs.sh
-**Purpose**: Creates amalgamated [production|development] environment files by concatenating multiple .env files in the correct order.
+**Purpose**: Creates amalgamated [production|development] environment files by concatenating multiple .env files in the correct order with advanced variable substitution.
 Amalgamated file is created in ../bor-secrets/<clientid>/<container>/[production|development]/<container>.[production|development].env
+
+**Enhanced Features**:
+- **Variable Substitution**: Uses `envsubst` to resolve nested variable references like `${DB_HOST}:${DB_PORT}/${DB_NAME}`
+- **Safe Processing**: Uses temporary files and proper cleanup to prevent corruption
+- **Error Handling**: Gracefully handles missing files without script failures
+- **Security**: Maintains strict file permissions (600) throughout the process
 
 **Usage**:
 ```bash
 # Create production env files for all containers
-./scripts/create-[prod|dev]-envs.sh
+./scripts/2.create-prod-envs.sh
+
+# Create development env files for all containers
+./scripts/2.create-dev-envs.sh
 
 # This will:
 # - Read from ../bor-secrets/<clientid>/<container>/ directories
 # - Create ../bor-secrets/<clientid>/<container>/[production|development]/ directories
-# - Generate <container>.production.env files
+# - Generate <container>.[production|development].env files with resolved variables
 ```
 
 **File Concatenation Order** (later files override earlier ones):
-1. `.env` (base environment)
-2. `.env.production` (production overrides)
-3. `.env.production.local` (final local overrides)
+1. `.env` (base environment) - foundation configuration
+2. `.env.[production|development]` (environment overrides) - environment-specific values
+3. `.env.[production|development].local` (final local overrides) - highest precedence
 
-**Output**: Each container gets a `production/<container>.production.env` file with all variables merged.
+**Variable Substitution Process**:
+1. **Concatenation**: Files are combined in order of precedence
+2. **Variable Export**: All variables are exported to shell environment for resolution
+3. **Substitution**: `envsubst` processes the combined file, resolving all `${VARIABLE}` references
+4. **Output**: Final files contain no unresolved variable references
 
+**Example Variable Resolution**:
+```bash
+# Input files:
+# .env: DB_HOST=localhost, DB_PORT=5432
+# .env.development: DATABASE_URL=${DB_HOST}:${DB_PORT}/devdb
+
+# Output: DATABASE_URL=localhost:5432/devdb
+```
+
+**Output**: Each container gets a `[production|development]/<container>.[production|development].env` file with all variables merged and resolved.
 
 ### 3. scp-to-server.sh
 **Purpose**: copies environment files from ../bor-secrets/<clientid>/<container>/<environment>/ directories
@@ -205,11 +236,11 @@ Amalgamated file is created in ../bor-secrets/<clientid>/<container>/[production
 # 2. Copy pfcm contents to base directory
 cp -r ../bor-secrets/pfcm/* ../bor-secrets/base/
 
-# 3. Create amalgamated production files
-./scripts/2.create-production-envs.sh
+# 3. Create amalgamated production files (with variable substitution)
+./scripts/2.create-prod-envs.sh
 
-# 4. Create amalgamated development files
-./scripts/2.create-development-envs.sh
+# 4. Create amalgamated development files (with variable substitution)
+./scripts/2.create-dev-envs.sh
 
 # 5. Deploy to production (single container)
 ./scripts/3.scp-to-server.sh bor-app
@@ -236,6 +267,7 @@ cp -r ../bor-secrets/pfcm/* ../bor-secrets/base/
 - Scripts validate container names before processing
 - Confirmation required for deploying all containers
 - File integrity verification after transfer
+- **Enhanced Security**: Temporary file cleanup and safe variable processing
 
 ## Docker Integration
 
@@ -257,6 +289,8 @@ docker run \
 5. **Use single container deployment** for testing and debugging
 6. **Verify file permissions** on both local and server
 7. **Maintain directory structure**: pfcm → base → dev/prod
+8. **Leverage variable substitution**: Use `${VARIABLE}` references for maintainable configurations
+9. **Check variable resolution**: Ensure no unresolved `${VARIABLE}` references remain in final files
 
 ## Troubleshooting
 
@@ -264,4 +298,6 @@ docker run \
 - **Permission denied**: Check file permissions in `../bor-secrets`
 - **SSH connection issues**: Verify server credentials and connectivity
 - **File size mismatch**: Re-run the deployment script
+- **Unresolved variables**: Check source files for malformed variable references
+- **Script errors**: Verify all required files exist and have proper permissions
 
