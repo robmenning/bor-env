@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Script to copy environment files from bor- repositories into ../bor-secrets/pfcm subdirectories
+# Script to copy environment files from bor- repositories into ../bor-secrets/pfcm and ../bor-secrets/base subdirectories
 # This script copies .env* files from the parent directory repositories into the corresponding
-# subdirectories in ../bor-secrets/pfcm for centralized environment file management
+# subdirectories in ../bor-secrets/pfcm and ../bor-secrets/base for centralized environment file management
 # Note: ../bor-secrets is NOT a git repository and contains sensitive files
 
 set -e  # Exit on any error
@@ -21,7 +21,8 @@ CONTAINERS=(
 copy_env_files() {
     local container_name="$1"
     local source_dir="../$container_name"
-    local target_dir="../bor-secrets/pfcm/$container_name"
+    local pfcm_dir="../bor-secrets/pfcm/$container_name"
+    local base_dir="../bor-secrets/base/$container_name"
     
     echo "Processing $container_name..."
     
@@ -31,11 +32,13 @@ copy_env_files() {
         return 1
     fi
     
-    # Create target directory structure
-    echo "  Creating target directory structure: $target_dir"
-    mkdir -p "$target_dir"
+    # Create target directory structures
+    echo "  Creating target directory structure: $pfcm_dir"
+    mkdir -p "$pfcm_dir"
+    echo "  Creating target directory structure: $base_dir"
+    mkdir -p "$base_dir"
     
-    # Copy all .env* files to the main container directory
+    # Copy all .env* files to both pfcm and base directories
     local env_files=($(find "$source_dir" -maxdepth 1 -name ".env*" -type f))
     
     if [ ${#env_files[@]} -eq 0 ]; then
@@ -46,29 +49,37 @@ copy_env_files() {
     echo "  Found ${#env_files[@]} environment file(s):"
     for env_file in "${env_files[@]}"; do
         local filename=$(basename "$env_file")
-        local target_file="$target_dir/$filename"
+        local pfcm_file="$pfcm_dir/$filename"
+        local base_file="$base_dir/$filename"
         
         echo "    Copying $filename..."
-        cp "$env_file" "$target_file"
         
-        # Set appropriate permissions (readable by owner only)
-        chmod 600 "$target_file"
+        # Copy to pfcm directory
+        cp "$env_file" "$pfcm_file"
+        chmod 600 "$pfcm_file"
+        echo "      ✓ Copied to $pfcm_file"
         
-        echo "      ✓ Copied to $target_file"
+        # Copy to base directory
+        cp "$env_file" "$base_file"
+        chmod 600 "$base_file"
+        echo "      ✓ Copied to $base_file"
     done
     
-    # Create production and development subdirectories for future amalgamated files
-    mkdir -p "$target_dir/production"
-    mkdir -p "$target_dir/development"
+    # Create production and development subdirectories in pfcm for future amalgamated files
+    # Remove existing directories to ensure fresh timestamps
+    rm -rf "$pfcm_dir/production"
+    rm -rf "$pfcm_dir/development"
+    mkdir -p "$pfcm_dir/production"
+    mkdir -p "$pfcm_dir/development"
     
-    echo "  ✓ Created production and development subdirectories"
+    echo "  ✓ Created production and development subdirectories in pfcm"
     echo "  ✓ Completed $container_name"
 }
 
 # Main execution
 echo "Starting environment file copy process..."
 echo "Source: parent directory repositories (../<container-name>)"
-echo "Target: ../bor-secrets/pfcm subdirectories (../bor-secrets/pfcm/<container-name>)"
+echo "Target: ../bor-secrets/pfcm and ../bor-secrets/base subdirectories"
 echo "Note: ../bor-secrets is NOT a git repository and contains sensitive files"
 echo ""
 
@@ -81,8 +92,8 @@ done
 echo "Environment file copy process completed!"
 echo ""
 echo "Next steps:"
-echo "1. Review the copied files in ../bor-secrets/pfcm subdirectories"
-echo "2. Copy pfcm contents to base directory: cp -r ../bor-secrets/pfcm/* ../bor-secrets/base/"
-echo "3. Run create-prod-envs.sh to generate production environment files"
+echo "1. Review the copied files in ../bor-secrets/pfcm and ../bor-secrets/base subdirectories"
+echo "2. Run create-prod-envs.sh to generate production environment files"
+echo "3. Run create-dev-envs.sh to generate development environment files"
 echo "4. Use scp-prod-envs.sh to deploy to production server"
 echo "5. Keep ../bor-secrets separate from git repositories"
