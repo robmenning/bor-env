@@ -4,6 +4,10 @@
 # This script copies the entire contents of ../bor-secrets/ directory to the server
 # excluding .env* files for security
 
+# sample usage commands:
+# ./rsync-prod-envs.sh ionos
+# ./rsync-prod-envs.sh az-bor-dev-vm
+
 set -e  # Exit on any error
 
 # Server configurations
@@ -88,9 +92,9 @@ rsync_bor_secrets() {
     echo "    Creating remote directory structure..."
     ssh "${SERVER_USERS[$server_name]}@${SERVER_HOSTS[$server_name]}" "mkdir -p ${SERVER_PATHS[$server_name]}"
     
-    # Rsync entire directory excluding .env* files
+    # Rsync entire directory excluding only files that start with .env
     echo "    Uploading files..."
-    rsync -avz --progress --exclude='*.env*' "$local_dir/" "$remote_path/"
+    rsync -avz --progress --exclude='.env*' "$local_dir/" "$remote_path/"
     
     echo "      ✓ Directory contents copied to server"
     echo "  ✓ Completed bor-secrets sync"
@@ -121,9 +125,9 @@ rsync_container() {
     echo "    Creating remote directory structure..."
     ssh "${SERVER_USERS[$server_name]}@${SERVER_HOSTS[$server_name]}" "mkdir -p ${SERVER_PATHS[$server_name]}/pfcm/$container_name"
     
-    # Rsync container directory excluding .env* files
+    # Rsync container directory excluding only files that start with .env
     echo "    Uploading files..."
-    rsync -avz --progress --exclude='*.env*' "$local_dir/" "$remote_path/"
+    rsync -avz --progress --exclude='.env*' "$local_dir/" "$remote_path/"
     
     echo "      ✓ Container directory copied to server"
     echo "  ✓ Completed $container_name"
