@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Script to create amalgamated production environment files
-# This script concatenates .env, .env.production, and .env.production.local files
-# into a single production.env file in each container's /production subdirectory
+# Script to create amalgamated development and production environment files
+# This script concatenates .env, .env.[development|production], and .env.[development|production].local files
+# into single [development|production].env files in each container's /[development|production] subdirectory
 # Note: Reads from ../bor-secrets/base and creates files in ../bor-secrets/pfcm (NOT in this git repo)
 # Enhanced with envsubst for variable substitution and nested variable resolution
 #
@@ -12,10 +12,11 @@
 # - Handles missing files gracefully without errors
 # - Creates both pfcm and base output directories
 # - Maintains secure file permissions (600)
+# - Creates both development and production environment files
 #
 # VARIABLE SUBSTITUTION:
 # This script can resolve nested variables like ${DB_HOST}:${DB_PORT}/${DB_NAME}
-# Variables are processed in order: base -> production -> production.local
+# Variables are processed in order: base -> [development|production] -> [development|production].local
 # Each subsequent file can override variables from previous files
 #
 # PRODUCTION CONSIDERATIONS:
@@ -35,16 +36,17 @@ CONTAINERS=(
     "bor-message"
 )
 
-# Function to create amalgamated production env file
-create_production_env() {
+# Function to create amalgamated environment file for a specific environment
+create_environment_env() {
     local container_name="$1"
+    local environment="$2"  # "development" or "production"
     local source_dir="../bor-secrets/base/$container_name"
-    local pfcm_output_dir="../bor-secrets/pfcm/$container_name/production"
-    local base_output_dir="../bor-secrets/base/$container_name/production"
-    local pfcm_output_file="$pfcm_output_dir/${container_name}.production.env"
-    local base_output_file="$base_output_dir/${container_name}.production.env"
+    local pfcm_output_dir="../bor-secrets/pfcm/$container_name/$environment"
+    local base_output_dir="../bor-secrets/base/$container_name/$environment"
+    local pfcm_output_file="$pfcm_output_dir/${container_name}.${environment}.env"
+    local base_output_file="$base_output_dir/${container_name}.${environment}.env"
     
-    echo "Processing $container_name..."
+    echo "Processing $container_name for $environment environment..."
     
     # Check if source directory exists
     if [ ! -d "$source_dir" ]; then
@@ -53,7 +55,7 @@ create_production_env() {
         return 1
     fi
     
-    # Create production directories if they don't exist
+    # Create environment directories if they don't exist
     if [ ! -d "$pfcm_output_dir" ]; then
         echo "  Creating pfcm output directory: $pfcm_output_dir"
         mkdir -p "$pfcm_output_dir"
@@ -65,29 +67,29 @@ create_production_env() {
     
     # Check which source files exist
     local has_base_env=false
-    local has_prod_env=false
-    local has_prod_local_env=false
+    local has_env_file=false
+    local has_env_local_file=false
     
     [ -f "$source_dir/.env" ] && has_base_env=true
-    [ -f "$source_dir/.env.production" ] && has_prod_env=true
-    [ -f "$source_dir/.env.production.local" ] && has_prod_local_env=true
+    [ -f "$source_dir/.env.$environment" ] && has_env_file=true
+    [ -f "$source_dir/.env.$environment.local" ] && has_env_local_file=true
     
-    if [ "$has_base_env" = false ] && [ "$has_prod_env" = false ]; then
+    if [ "$has_base_env" = false ] && [ "$has_env_file" = false ]; then
         echo "  Warning: No base environment files found in $source_dir"
         return 1
     fi
     
-    echo "  Creating amalgamated production environment files..."
+    echo "  Creating amalgamated $environment environment files..."
     
     # Create temporary working files for variable substitution
     # These temp files ensure safe processing and prevent corruption of source files
     local temp_base_file=$(mktemp)
-    local temp_prod_file=$(mktemp)
-    local temp_prod_local_file=$(mktemp)
+    local temp_env_file=$(mktemp)
+    local temp_env_local_file=$(mktemp)
     local temp_combined_file=$(mktemp)
     
     # Clean up temp files on exit - critical for security and disk space management
-    trap 'rm -f "$temp_base_file" "$temp_prod_file" "$temp_prod_local_file" "$temp_combined_file"' EXIT
+    trap 'rm -f "$temp_base_file" "$temp_env_file" "$temp_env_local_file" "$temp_combined_file"' EXIT
     
     # Start with empty combined file - will be populated with concatenated content
     > "$temp_combined_file"
@@ -107,33 +109,33 @@ create_production_env() {
         fi
     fi
     
-    # Process .env.production file (production overrides) - these override base values
-    if [ "$has_prod_env" = true ]; then
-        echo "    Processing .env.production overrides..."
+    # Process .env.[environment] file ([environment] overrides) - these override base values
+    if [ "$has_env_file" = true ]; then
+        echo "    Processing .env.$environment overrides..."
         # Exclude files with 'example' in the name to avoid processing template files
-        if [[ "$source_dir/.env.production" != *"example"* ]]; then
-            # Copy production file to temp location for safe processing
-            cp "$source_dir/.env.production" "$temp_prod_file"
-            # Append to combined file - development values override base values
-            cat "$temp_prod_file" >> "$temp_combined_file"
-            echo "      ✓ Added .env.production overrides"
+        if [[ "$source_dir/.env.$environment" != *"example"* ]]; then
+            # Copy environment file to temp location for safe processing
+            cp "$source_dir/.env.$environment" "$temp_env_file"
+            # Append to combined file - environment values override base values
+            cat "$temp_env_file" >> "$temp_combined_file"
+            echo "      ✓ Added .env.$environment overrides"
         else
-            echo "      Skipping .env.production (contains 'example')"
+            echo "      Skipping .env.$environment (contains 'example')"
         fi
     fi
     
-    # Process .env.production.local file (final local overrides) - highest precedence
-    if [ "$has_prod_local_env" = true ]; then
-        echo "    Processing .env.production.local final overrides..."
+    # Process .env.[environment].local file (final local overrides) - highest precedence
+    if [ "$has_env_local_file" = true ]; then
+        echo "    Processing .env.$environment.local final overrides..."
         # Exclude files with 'example' in the name to avoid processing template files
-        if [[ "$source_dir/.env.production.local" != *"example"* ]]; then
-            # Copy local production file to temp location for safe processing
-            cp "$source_dir/.env.production.local" "$temp_prod_local_file"
+        if [[ "$source_dir/.env.$environment.local" != *"example"* ]]; then
+            # Copy local environment file to temp location for safe processing
+            cp "$source_dir/.env.$environment.local" "$temp_env_local_file"
             # Append to combined file - local values have highest precedence
-            cat "$source_dir/.env.production.local" >> "$temp_combined_file"
-            echo "      ✓ Added .env.production.local final overrides"
+            cat "$source_dir/.env.$environment.local" >> "$temp_combined_file"
+            echo "      ✓ Added .env.$environment.local final overrides"
         else
-            echo "      Skipping .env.production.local (contains 'example')"
+            echo "      Skipping .env.$environment.local (contains 'example')"
         fi
     fi
     
@@ -143,9 +145,9 @@ create_production_env() {
     
     # Create a temporary environment file for envsubst processing
     # This file will be used to store the final processed environment
-    local temp_env_file=$(mktemp)
+    local temp_env_export_file=$(mktemp)
     # Update trap to include the new temp file for cleanup
-    trap 'rm -f "$temp_base_file" "$temp_prod_file" "$temp_prod_local_file" "$temp_combined_file" "$temp_env_file"' EXIT
+    trap 'rm -f "$temp_base_file" "$temp_env_file" "$temp_env_local_file" "$temp_combined_file" "$temp_env_export_file"' EXIT
     
     # Export all variables from the combined file for envsubst to use
     # This allows nested variable resolution by making variables available in shell environment
@@ -155,12 +157,12 @@ create_production_env() {
     # First, create a clean environment file with only valid variable assignments
     # Filter out any lines that might contain shell commands or special characters
     # More strict filtering to avoid problematic lines
-    grep -E '^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*$' "$temp_combined_file" > "$temp_env_file" 2>/dev/null || true
+    grep -E '^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*$' "$temp_combined_file" > "$temp_env_export_file" 2>/dev/null || true
     
     # Also filter out lines with spaces in values or special characters that might cause issues
     # Create a more restrictive filter for the environment variables
     local temp_clean_env_file=$(mktemp)
-    trap 'rm -f "$temp_base_file" "$temp_prod_file" "$temp_prod_local_file" "$temp_combined_file" "$temp_env_file" "$temp_clean_env_file"' EXIT
+    trap 'rm -f "$temp_base_file" "$temp_env_file" "$temp_env_local_file" "$temp_combined_file" "$temp_env_export_file" "$temp_clean_env_file"' EXIT
     
     # Only include simple variable assignments without spaces or special characters in values
     while IFS= read -r line; do
@@ -170,7 +172,7 @@ create_production_env() {
         if [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*$ ]]; then
             echo "$line" >> "$temp_clean_env_file"
         fi
-    done < "$temp_env_file"
+    done < "$temp_env_export_file"
     
     # Export only the clean variables for envsubst to use
     # This prevents shell interpretation errors while still allowing variable substitution
@@ -196,46 +198,82 @@ create_production_env() {
     echo "      ✓ Created $pfcm_output_file with $pfcm_line_count lines"
     echo "      ✓ Created $base_output_file with $base_line_count lines"
     echo "      ✓ Variable substitution completed"
-    echo "  ✓ Completed $container_name"
+    echo "  ✓ Completed $container_name for $environment environment"
+}
+
+# Function to create both development and production environment files for a container
+create_container_envs() {
+    local container_name="$1"
+    
+    echo "Processing $container_name..."
+    echo ""
+    
+    # Create development environment files
+    create_environment_env "$container_name" "development"
+    echo ""
+    
+    # Create production environment files
+    create_environment_env "$container_name" "production"
+    echo ""
+    
+    echo "✓ Completed $container_name (both environments)"
 }
 
 # Main execution
-echo "Starting production environment file amalgamation with variable substitution..."
+echo "Starting environment file amalgamation with variable substitution..."
 echo "Source: ../bor-secrets/base subdirectories (../bor-secrets/base/<container-name>)"
-echo "Output: /production/production.env in each ../bor-secrets/pfcm container directory"
+echo "Output: /[development|production]/[development|production].env in each ../bor-secrets/pfcm container directory"
 echo "Note: All files are created in ../bor-secrets/pfcm (NOT in this git repo)"
 echo "Enhanced with envsubst for nested variable resolution"
+echo "Creating both development and production environment files"
 echo ""
 
-# Process each container
+# Process each container for both environments
 for container in "${CONTAINERS[@]}"; do
-    create_production_env "$container"
+    create_container_envs "$container"
     echo ""
 done
 
-echo "Production environment file amalgamation completed!"
+echo "Environment file amalgamation completed!"
 echo ""
 echo "Files created in ../bor-secrets/pfcm:"
 for container in "${CONTAINERS[@]}"; do
-    output_file="../bor-secrets/pfcm/$container/production/${container}.production.env"
-    if [ -f "$output_file" ]; then
-        line_count=$(wc -l < "$output_file")
-        echo "  $output_file ($line_count lines)"
+    # Development files
+    dev_output_file="../bor-secrets/pfcm/$container/development/${container}.development.env"
+    if [ -f "$dev_output_file" ]; then
+        line_count=$(wc -l < "$dev_output_file")
+        echo "  $dev_output_file ($line_count lines)"
+    fi
+    
+    # Production files
+    prod_output_file="../bor-secrets/pfcm/$container/production/${container}.production.env"
+    if [ -f "$prod_output_file" ]; then
+        line_count=$(wc -l < "$prod_output_file")
+        echo "  $prod_output_file ($line_count lines)"
     fi
 done
 echo ""
 echo "Files created in ../bor-secrets/base:"
 for container in "${CONTAINERS[@]}"; do
-    output_file="../bor-secrets/base/$container/production/${container}.production.env"
-    if [ -f "$output_file" ]; then
-        line_count=$(wc -l < "$output_file")
-        echo "  $output_file ($line_count lines)"
+    # Development files
+    dev_output_file="../bor-secrets/base/$container/development/${container}.development.env"
+    if [ -f "$dev_output_file" ]; then
+        line_count=$(wc -l < "$dev_output_file")
+        echo "  $dev_output_file ($line_count lines)"
+    fi
+    
+    # Production files
+    prod_output_file="../bor-secrets/base/$container/production/${container}.production.env"
+    if [ -f "$prod_output_file" ]; then
+        line_count=$(wc -l < "$prod_output_file")
+        echo "  $prod_output_file ($line_count lines)"
     fi
 done
 echo ""
 echo "Next steps:"
-echo "1. Review the amalgamated production.env files in ../bor-secrets/pfcm and base"
-echo "2. Use scp-prod-envs.sh to deploy these files to production server"
-echo "3. Keep ../bor-secrets separate from git repositories"
-echo "4. Run copy-from-repos.sh to update source files when needed"
-echo "5. Variable substitution now supports nested references (e.g., ${DB_HOST}:${DB_PORT})"
+echo "1. Review the amalgamated environment files in ../bor-secrets/pfcm and base"
+echo "2. Use rsync-prod-envs.sh to deploy production files to servers"
+echo "3. Use development files for local development and testing"
+echo "4. Keep ../bor-secrets separate from git repositories"
+echo "5. Run copy-from-repos.sh to update source files when needed"
+echo "6. Variable substitution now supports nested references (e.g., ${DB_HOST}:${DB_PORT})"
