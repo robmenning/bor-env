@@ -13,6 +13,7 @@
 # - Creates both pfcm and base output directories
 # - Maintains secure file permissions (600)
 # - Creates both development and production environment files
+# - Cleans output files by removing inline comments and trailing spaces
 #
 # VARIABLE SUBSTITUTION:
 # This script can resolve nested variables like ${DB_HOST}:${DB_PORT}/${DB_NAME}
@@ -89,7 +90,7 @@ create_environment_env() {
     local temp_combined_file=$(mktemp)
     
     # Clean up temp files on exit - critical for security and disk space management
-    trap 'rm -f "$temp_base_file" "$temp_env_file" "$temp_env_local_file" "$temp_combined_file"' EXIT
+    trap 'rm -f "$temp_base_file" "$temp_env_file" "$temp_env_local_file" "$temp_combined_file" "$temp_cleaned_file"' EXIT
     
     # Start with empty combined file - will be populated with concatenated content
     > "$temp_combined_file"
@@ -139,6 +140,37 @@ create_environment_env() {
         fi
     fi
     
+    # Clean the combined file by removing inline comments and trailing spaces
+    # This ensures production-ready output files
+    echo "    Cleaning combined file (removing inline comments and trailing spaces)..."
+    local temp_cleaned_file=$(mktemp)
+    trap 'rm -f "$temp_base_file" "$temp_env_file" "$temp_env_local_file" "$temp_combined_file" "$temp_cleaned_file"' EXIT
+    
+    while IFS= read -r line; do
+        # Skip empty lines
+        [[ -z "$line" ]] && continue
+        
+        # Check if line is a variable assignment (contains =)
+        if [[ "$line" =~ .*=.* ]]; then
+            # This is a variable assignment line
+            # Remove inline comments (everything after #) and trailing spaces
+            cleaned_line=$(echo "$line" | sed 's/[[:space:]]*#.*$//' | sed 's/[[:space:]]*$//')
+            # Only output if the cleaned line still contains an assignment
+            if [[ "$cleaned_line" =~ .*=.* ]]; then
+                echo "$cleaned_line" >> "$temp_cleaned_file"
+            fi
+        else
+            # This is a comment line or other content - preserve as-is
+            # Remove trailing spaces only
+            cleaned_line=$(echo "$line" | sed 's/[[:space:]]*$//')
+            echo "$cleaned_line" >> "$temp_cleaned_file"
+        fi
+    done < "$temp_combined_file"
+    
+    # Replace the combined file with the cleaned version
+    mv "$temp_cleaned_file" "$temp_combined_file"
+    echo "      ✓ Cleaned combined file (removed inline comments and trailing spaces)"
+    
     # Now process the combined file with envsubst for variable substitution
     # This step resolves all nested variable references like ${DB_HOST}, ${DB_PORT}, etc.
     echo "    Processing variable substitutions with envsubst..."
@@ -147,7 +179,7 @@ create_environment_env() {
     # This file will be used to store the final processed environment
     local temp_env_export_file=$(mktemp)
     # Update trap to include the new temp file for cleanup
-    trap 'rm -f "$temp_base_file" "$temp_env_file" "$temp_env_local_file" "$temp_combined_file" "$temp_env_export_file"' EXIT
+    trap 'rm -f "$temp_base_file" "$temp_env_file" "$temp_env_local_file" "$temp_combined_file" "$temp_env_export_file" "$temp_cleaned_file"' EXIT
     
     # Export all variables from the combined file for envsubst to use
     # This allows nested variable resolution by making variables available in shell environment
@@ -277,3 +309,4 @@ echo "3. Use development files for local development and testing"
 echo "4. Keep ../bor-secrets separate from git repositories"
 echo "5. Run copy-from-repos.sh to update source files when needed"
 echo "6. Variable substitution now supports nested references (e.g., ${DB_HOST}:${DB_PORT})"
+echo "7. Output files are cleaned (inline comments and trailing spaces removed)"
