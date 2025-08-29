@@ -19,43 +19,105 @@ bor-env/                          # This git repository (scripts only)
 ├── scripts/
 │   ├── copy-from-repos.sh       # Copy .env files from bor-* repos
 │   ├── create-prod-envs.sh      # Create amalgamated production files
+│   ├── create-dev-envs.sh       # Create amalgamated development files
 │   └── scp-prod-envs.sh         # Deploy to production server
 └── .cursorrules
 
-../bor-secrets/                   # Centralized env files (NOT in git)
-├── bor-db/
-│   ├── .env                     # Base environment
-│   ├── .env.production          # Production overrides
-│   ├── .env.production.local    # Local production overrides
-│   └── prod-out/
-│       └── bor-db.production.env # Final amalgamated file
-├── bor-api/
-│   ├── .env
-│   ├── .env.production
-│   ├── .env.production.local
-│   └── prod-out/
-│       └── bor-api.production.env
-├── bor-app/
-│   ├── .env
-│   ├── .env.production
-│   ├── .env.production.local
-│   └── prod-out/
-│       └── bor-app.production.env
-├── bor-airflow/
-│   ├── .env
-│   ├── .env.production
-│   └── prod-out/
-│       └── bor-airflow.production.env
-├── bor-files/
-│   ├── .env
-│   ├── .env.production
-│   └── prod-out/
-│       └── bor-files.production.env
-└── bor-message/
-    ├── .env
-    ├── .env.production
-    └── prod-out/
-        └── bor-message.production.env
+# pattern for secrets dir structure:
+## ../bor-secrets/<clientid>/<container>/<environment>/<container>.<environment>.env
+## e.g.:
+../bor-secrets/                   
+├── pfcm/                         
+│   ├── bor-db/
+│   │   ├── production/
+│   │   │   ├── bor-db.production.env
+│   │   ├── development/
+│   │   │   ├── bor-db.development.env
+│   │   ├── .env                 
+│   │   ├── .env.production      
+│   │   └── .env.production.local 
+│   ├── bor-api/
+│   │   ├── production/
+│   │   │   ├── bor-api.production.env
+│   │   ├── development/
+│   │   │   ├── bor-api.development.env
+│   │   ├── .env                 
+│   │   ├── .env.production      
+│   │   └── .env.production.local 
+│   ├── bor-app/
+│   │   ├── production/
+│   │   │   ├── bor-app.production.env
+│   │   ├── development/
+│   │   │   ├── bor-app.development.env
+│   │   ├── .env                 
+│   │   ├── .env.production      
+│   │   └── .env.production.local 
+│   ├── bor-airflow/
+│   │   ├── production/
+│   │   │   ├── bor-airflow.production.env
+│   │   ├── development/
+│   │   │   ├── bor-airflow.development.env
+│   │   ├── .env                 
+│   │   ├── .env.production      
+│   │   └── .env.production.local 
+│   ├── bor-files/
+│   │   ├── production/
+│   │   │   ├── bor-files.production.env
+│   │   ├── development/
+│   └── bor-message/
+│       ├── production/
+│       │   ├── bor-message.production.env
+│       ├── development/
+│       │   ├── bor-message.development.env
+│       ├── .env                 
+│       ├── .env.production      
+│       └── .env.production.local 
+├── base/                        # base (neutral) client
+│   ├── bor-db/
+│   │   ├── production/
+│   │   │   ├── bor-db.production.env
+│   │   ├── development/
+│   │   │   ├── bor-db.development.env
+│   │   ├── .env                 
+│   │   ├── .env.production      
+│   │   └── .env.production.local 
+│   ├── bor-api/
+│   │   ├── production/
+│   │   │   ├── bor-api.production.env
+│   │   ├── development/
+│   │   │   ├── bor-api.development.env
+│   │   ├── .env                 
+│   │   ├── .env.production      
+│   │   └── .env.production.local 
+│   ├── bor-app/
+│   │   ├── production/
+│   │   │   ├── bor-app.production.env
+│   │   ├── development/
+│   │   │   ├── bor-app.development.env
+│   │   ├── .env                 
+│   │   ├── .env.production      
+│   │   └── .env.production.local 
+│   ├── bor-airflow/
+│   │   ├── production/
+│   │   │   ├── bor-airflow.production.env
+│   │   ├── development/
+│   │   │   ├── bor-airflow.development.env
+│   │   ├── .env                 
+│   │   ├── .env.production      
+│   │   └── .env.production.local 
+│   ├── bor-files/
+│   │   ├── production/
+│   │   │   ├── bor-files.production.env
+│   │   ├── development/
+│   └── bor-message/
+│       ├── production/
+│       │   ├── bor-message.production.env
+│       ├── development/
+│       │   ├── bor-message.development.env
+│       ├── .env                 
+│       ├── .env.production      
+│       └── .env.production.local 
+
 
 ../bor-*/                         # Individual bor-* repositories
 ├── bor-db/
@@ -66,10 +128,20 @@ bor-env/                          # This git repository (scripts only)
 └── bor-message/
 ```
 
+The `.cursorrules` file has been updated with comprehensive documentation of the enhanced variable substitution features, including:
+
+- **Enhanced Features** section explaining the new capabilities
+- **Variable Substitution Process** with step-by-step details
+- **Example Variable Resolution** showing practical usage
+- **Updated Best Practices** including variable substitution tips
+- **Enhanced Troubleshooting** section covering variable-related issues
+
+Please review and let me know if you'd like any adjustments to the documentation.
+
 ## Script Workflow
 
-### 1. copy-from-repos.sh
-**Purpose**: Copies `.env*` files from individual bor-* repositories into the centralized `../bor-secrets` directory.
+### 1. 1.copy-from-repos.sh
+**Purpose**: Copies `.env*` files from individual ../bor-* repositories into the centralized `../bor-secrets/<clientid>/bor-*` directory.
 
 **Usage**:
 ```bash
@@ -78,73 +150,103 @@ bor-env/                          # This git repository (scripts only)
 
 # This will:
 # - Copy .env, .env.production, .env.production.local from each ../bor-* repo
-# - Create ../bor-secrets/<container>/ subdirectories
+# - Create ../bor-secrets/<clientid>/<container>/ subdirectories
 # - Set proper permissions (600) on copied files
 ```
 
 **What it does**:
-- Scans parent directory for bor-* repositories
-- Copies all `.env*` files to corresponding `../bor-secrets/<container>/` subdirectories
+- Scans parallel (../bor-*) directories for bor-* repositories
+- Copies all `.env*` files to corresponding `../bor-secrets/<clientid>/<container>/` subdirectories
 - Creates target directories if they don't exist
 - Sets secure permissions (600) on copied files
 
-### 2. create-prod-envs.sh
-**Purpose**: Creates amalgamated production environment files by concatenating multiple .env files in the correct order.
+### 2. 2.create-[production|development]-envs.sh
+**Purpose**: Creates amalgamated [production|development] environment files by concatenating multiple .env files in the correct order with advanced variable substitution.
+Amalgamated file is created in ../bor-secrets/<clientid>/<container>/[production|development]/<container>.[production|development].env
+
+**Enhanced Features**:
+- **Variable Substitution**: Uses `envsubst` to resolve nested variable references like `${DB_HOST}:${DB_PORT}/${DB_NAME}`
+- **Safe Processing**: Uses temporary files and proper cleanup to prevent corruption
+- **Error Handling**: Gracefully handles missing files without script failures
+- **Security**: Maintains strict file permissions (600) throughout the process
 
 **Usage**:
 ```bash
 # Create production env files for all containers
-./scripts/create-prod-envs.sh
+./scripts/2.create-prod-envs.sh
+
+# Create development env files for all containers
+./scripts/2.create-dev-envs.sh
 
 # This will:
-# - Read from ../bor-secrets/<container>/ directories
-# - Create ../bor-secrets/<container>/prod-out/ directories
-# - Generate <container>.production.env files
+# - Read from ../bor-secrets/<clientid>/<container>/ directories
+# - Create ../bor-secrets/<clientid>/<container>/[production|development]/ directories
+# - Generate <container>.[production|development].env files with resolved variables
 ```
 
 **File Concatenation Order** (later files override earlier ones):
-1. `.env` (base environment)
-2. `.env.production` (production overrides)
-3. `.env.production.local` (final local overrides)
+1. `.env` (base environment) - foundation configuration
+2. `.env.[production|development]` (environment overrides) - environment-specific values
+3. `.env.[production|development].local` (final local overrides) - highest precedence
 
-**Output**: Each container gets a `prod-out/<container>.production.env` file with all variables merged.
+**Variable Substitution Process**:
+1. **Concatenation**: Files are combined in order of precedence
+2. **Variable Export**: All variables are exported to shell environment for resolution
+3. **Substitution**: `envsubst` processes the combined file, resolving all `${VARIABLE}` references
+4. **Output**: Final files contain no unresolved variable references
 
-### 3. scp-prod-envs.sh
-**Purpose**: Deploys production environment files to the production server.
+**Example Variable Resolution**:
+```bash
+# Input files:
+# .env: DB_HOST=localhost, DB_PORT=5432
+# .env.development: DATABASE_URL=${DB_HOST}:${DB_PORT}/devdb
+
+# Output: DATABASE_URL=localhost:5432/devdb
+```
+
+**Output**: Each container gets a `[production|development]/<container>.[production|development].env` file with all variables merged and resolved.
+
+### 3. scp-to-server.sh
+**Purpose**: copies environment files from ../bor-secrets/<clientid>/<container>/<environment>/ directories
+# to the server secrets directory for deployment.
+
+# command line arguments:
+# <clientid>      # mandatory: allowed values: pfcm, base
+# <container>     # if not specified, all containers in <clientid> will be sent
+# <environment>   # mandatory: allowed values: production, development
+
 
 **Usage**:
 ```bash
-# Deploy single container
-./scripts/scp-prod-envs.sh bor-app
-
-# Deploy all containers (with confirmation)
-./scripts/scp-prod-envs.sh
-
-# Deploy specific container
-./scripts/scp-prod-envs.sh bor-db
+# ./scp-to-server.sh pfcm bor-db production
+# ./scp-to-server.sh base bor-db development
+# ./scp-to-server.sh base bor-api production
+# ./scp-to-server.sh pfcm bor-api development
 ```
 
 **What it does**:
-- Copies `<container>.production.env` files to production server
-- Creates remote directories if needed
-- Sets proper permissions on server
-- Verifies file transfer integrity
-- Provides confirmation prompt when deploying all containers
+- Copies `../bor-secrets/<clientid>/<container>/<environment>/<container>.<environment>.env` files to production server
 
 ## Complete Workflow Example
 
 ```bash
 # 1. Copy environment files from repositories
-./scripts/copy-from-repos.sh
+./scripts/1.copy-from-repos.sh
 
-# 2. Create amalgamated production files
-./scripts/create-prod-envs.sh
+# 2. Copy pfcm contents to base directory
+cp -r ../bor-secrets/pfcm/* ../bor-secrets/base/
 
-# 3. Deploy to production (single container)
-./scripts/scp-prod-envs.sh bor-app
+# 3. Create amalgamated production files (with variable substitution)
+./scripts/2.create-prod-envs.sh
 
-# 4. Deploy to production (all containers)
-./scripts/scp-prod-envs.sh
+# 4. Create amalgamated development files (with variable substitution)
+./scripts/2.create-dev-envs.sh
+
+# 5. Deploy to production (single container)
+./scripts/3.scp-to-server.sh bor-app
+
+# 6. Deploy to production (all containers)
+./scripts/3.scp-to-server.sh
 ```
 
 ## Production Server Configuration
@@ -165,6 +267,7 @@ bor-env/                          # This git repository (scripts only)
 - Scripts validate container names before processing
 - Confirmation required for deploying all containers
 - File integrity verification after transfer
+- **Enhanced Security**: Temporary file cleanup and safe variable processing
 
 ## Docker Integration
 
@@ -179,12 +282,15 @@ docker run \
 
 ## Best Practices
 
-1. **Always run scripts in order**: copy → create → deploy
+1. **Always run scripts in order**: copy → copy to base → create → deploy
 2. **Test single containers first** before deploying all
 3. **Keep ../bor-secrets separate** from any git repositories
 4. **Review amalgamated files** before deployment
 5. **Use single container deployment** for testing and debugging
 6. **Verify file permissions** on both local and server
+7. **Maintain directory structure**: pfcm → base → dev/prod
+8. **Leverage variable substitution**: Use `${VARIABLE}` references for maintainable configurations
+9. **Check variable resolution**: Ensure no unresolved `${VARIABLE}` references remain in final files
 
 ## Troubleshooting
 
@@ -192,4 +298,6 @@ docker run \
 - **Permission denied**: Check file permissions in `../bor-secrets`
 - **SSH connection issues**: Verify server credentials and connectivity
 - **File size mismatch**: Re-run the deployment script
+- **Unresolved variables**: Check source files for malformed variable references
+- **Script errors**: Verify all required files exist and have proper permissions
 
